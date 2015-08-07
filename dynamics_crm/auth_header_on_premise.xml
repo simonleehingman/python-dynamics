@@ -1,0 +1,63 @@
+<s:Header>
+    <a:Action s:mustUnderstand="1">
+        http://schemas.microsoft.com/xrm/2011/Contracts/Services/IOrganizationService/Execute
+    </a:Action>
+    <a:MessageID>urn:uuid:{{ random_uuid() }}</a:MessageID>
+    <a:ReplyTo>
+        <a:Address>http://www.w3.org/2005/08/addressing/anonymous</a:Address>
+    </a:ReplyTo>
+    <a:To s:mustUnderstand="1">{{ url }}/XRMServices/2011/Organization.svc</a:To>
+    <o:Security
+            xmlns:o="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+        {% include 'dynamics_crm/timestamp.xml' %}
+        <xenc:EncryptedData Type="http://www.w3.org/2001/04/xmlenc#Element"
+                            xmlns:xenc="http://www.w3.org/2001/04/xmlenc#">
+            <xenc:EncryptionMethod Algorithm="http://www.w3.org/2001/04/xmlenc#aes256-cbc"/>
+            <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+                <e:EncryptedKey xmlns:e="http://www.w3.org/2001/04/xmlenc#">
+                    <e:EncryptionMethod Algorithm="http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p">
+                        <DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
+                    </e:EncryptionMethod>
+                    <KeyInfo>
+                        <o:SecurityTokenReference
+                                xmlns:o="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+                            <X509Data>
+                                <X509IssuerSerial>
+                                    <X509IssuerName>{{ issuer_name_x509 }}</X509IssuerName>
+                                    <X509SerialNumber>{{ serial_number_x509 }}</X509SerialNumber>
+                                </X509IssuerSerial>
+                            </X509Data>
+                        </o:SecurityTokenReference>
+                    </KeyInfo>
+                    <e:CipherData>
+                        <e:CipherValue>{{ key_ciphertext }}</e:CipherValue>
+                    </e:CipherData>
+                </e:EncryptedKey>
+            </KeyInfo>
+            <xenc:CipherData>
+                <xenc:CipherValue>{{ token_ciphertext }}</xenc:CipherValue>
+            </xenc:CipherData>
+        </xenc:EncryptedData>
+        <Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
+            <SignedInfo>
+                <CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+                <SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#hmac-sha1"/>
+                <Reference URI="#_0">
+                    <Transforms>
+                        <Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+                    </Transforms>
+                    <DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
+                    <DigestValue>{{ signature_digest }}</DigestValue>
+                </Reference>
+            </SignedInfo>
+            <SignatureValue>{{ signature }}</SignatureValue>
+            <KeyInfo>
+                <o:SecurityTokenReference
+                        xmlns:o="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+                    <o:KeyIdentifier
+                            ValueType="http://docs.oasis-open.org/wss/oasis-wss-saml-token-profile-1.0#SAMLAssertionID">{{ key_ident }}</o:KeyIdentifier>
+                </o:SecurityTokenReference>
+            </KeyInfo>
+        </Signature>
+    </o:Security>
+</s:Header>
