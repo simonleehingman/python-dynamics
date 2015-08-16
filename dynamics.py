@@ -1,16 +1,16 @@
-import base64
+﻿import base64
 from datetime import datetime, timedelta
 import hashlib
 import hmac
 import os
-from urlparse import urljoin
+#from urlparse2 import urljoin
 from uuid import uuid4
 from cgi import escape
 import requests
 
 from jinja2 import Template, FileSystemLoader
 from jinja2.environment import Environment
-
+from urllib.parse import urljoin
 
 def render_to_string(template_name, context=None):
     if context is None:
@@ -24,7 +24,7 @@ def render_to_string(template_name, context=None):
 
 def fix_suds():
     # suds.sax.parser has a broken reference to
-    # suds.metrics somehow? dunno if just my install
+    # suds.metrics somehow?  dunno if just my install
     # or due to their import *s or what.
     import suds
     try:
@@ -92,8 +92,8 @@ class DynamicsCrmSettings(object):
 
     def get_headers(self, content):
         return {
-            'content-type': 'application/soap+xml; charset=UTF-8',
-            'content-length': len(content),
+            'Content-Type': 'application/soap+xml; charset=UTF-8',
+            'Content-Length': len(content),
         }
 
     def generate_auth_request_body_online(self):
@@ -107,8 +107,7 @@ class DynamicsCrmSettings(object):
             'expiration': expiration,
             'random_uuid': uuid4,
         }
-        return render_to_string(
-            'dynamics_crm/auth_request_online.xml', context)
+        return render_to_string('dynamics_crm/auth_request_online.xml', context)
 
     def generate_auth_request_body_on_premise(self):
         expiration = (self.now + timedelta(minutes=60)).isoformat()
@@ -121,10 +120,9 @@ class DynamicsCrmSettings(object):
             'expiration': expiration,
             'random_uuid': uuid4,
         }
-        return render_to_string(
-            'dynamics_crm/auth_request_on_premise.xml', context)
+        return render_to_string('dynamics_crm/auth_request_on_premise.xml', context)
 
-    def get_authentication_xml_block(self):
+    def get_authentication_xml_block(self, message_type):
         if self.is_crm_online:
             request_body = self.generate_auth_request_body_online()
         else:
@@ -135,28 +133,30 @@ class DynamicsCrmSettings(object):
         self._write_debug_file('login_response', resp.content)
         if resp.status_code != 200:
             raise CrmAuthenticationError(resp.content)
-        return self.generate_auth_header(resp.content)
+        return self.generate_auth_header(resp.content, message_type)
 
-    def generate_auth_header(self, resp_content):
+    def generate_auth_header(self, resp_content, message_type):
         if self.is_crm_online:
-            return self.generate_auth_header_online(resp_content)
+            return self.generate_auth_header_online(resp_content, message_type)
         else:
-            return self.generate_auth_header_on_premise(resp_content)
+            return self.generate_auth_header_on_premise(resp_content, message_type)
 
-    def generate_auth_header_on_premise(self, resp_content):
+    def generate_auth_header_on_premise(self, resp_content, message_type):
         tokens = self.extract_auth_tokens_on_premise(resp_content)
         context = {
             'url': self.url,
             'random_uuid': uuid4,
+            'message_type': message_type
         }
         context.update(tokens)
         return render_to_string('dynamics_crm/auth_header_on_premise.xml', context)
 
-    def generate_auth_header_online(self, resp_content):
+    def generate_auth_header_online(self, resp_content, message_type):
         tokens = self.extract_auth_tokens_online(resp_content)
         context = {
             'url': self.url,
             'random_uuid': uuid4,
+            'message_type': message_type
         }
         context.update(tokens)
         return render_to_string('dynamics_crm/auth_header_online.xml', context)
@@ -167,8 +167,7 @@ class DynamicsCrmSettings(object):
         p = Parser()
         doc = p.parse(string=resp_content)
 
-        rst_encrypted_data = doc.childAtPath(
-            'Envelope/Body/RequestSecurityTokenResponse/RequestedSecurityToken/EncryptedData')
+        rst_encrypted_data = doc.childAtPath('Envelope/Body/RequestSecurityTokenResponse/RequestedSecurityToken/EncryptedData')
 
         token_ciphertext = rst_encrypted_data.childAtPath('CipherData/CipherValue').text
 
@@ -176,7 +175,8 @@ class DynamicsCrmSettings(object):
         key_ident = encrypted_key.childAtPath('KeyInfo/SecurityTokenReference/KeyIdentifier').text
         key_ciphertext = encrypted_key.childAtPath('CipherData/CipherValue').text
 
-        # raise CrmAuthenticationError("KeyIdentifier or CipherValue not found in", resp_content)
+        # raise CrmAuthenticationError("KeyIdentifier or CipherValue not found
+        # in", resp_content)
         context = {
             'key_ciphertext': key_ciphertext,
             'token_ciphertext': token_ciphertext,
@@ -218,13 +218,15 @@ class DynamicsCrmSettings(object):
         return context
 
     def generate_hmac_signature(self, binary_secret, created, expires):
+
         timestamp = render_to_string('dynamics_crm/timestamp.xml',
                                      {'created': created, 'expires': expires})
+
         timestamp_hasher = hashlib.sha1()
-        timestamp_hasher.update(timestamp)
-        timestamp_digest = base64.b64encode(timestamp_hasher.digest())
+        timestamp_hasher.update(timestamp.encode('utf8'))
+        timestamp_digest = base64.b64encode(timestamp_hasher.digest()).decode('ascii')
         signed_info = render_to_string('dynamics_crm/hmac.xml', {'digest': timestamp_digest})
-        hashed = base64.b64encode(hmac.new(base64.b64decode(binary_secret), signed_info, hashlib.sha1).digest())
+        hashed = base64.b64encode(hmac.new(base64.b64decode(binary_secret), signed_info.encode('utf8'), hashlib.sha1).digest()).decode('ascii')
         return hashed, timestamp_digest
 
     def get_adfs(self):
@@ -249,15 +251,21 @@ class DynamicsCrmSettings(object):
 
     def make_whoami_request(self):
         whoami = render_to_string('dynamics_crm/whoami.xml')
-        return self.make_soap_request(whoami)
 
-    def make_soap_request(self, request_body):
+        resp = self.make_soap_request(whoami, "Execute")
+        if resp.status_code == 200:
+            return self.get_whoami(resp.content)
+        else:
+            raise DynamicsCrmSettingsError('Dynamcs CRM Error ({}): {}'.format(resp.status_code, resp.content))
+
+    def make_soap_request(self, request_body, message_type):
         url = urljoin(self.url, self.soap_api_path)
-        auth_header = self.get_authentication_xml_block()
+        auth_header = self.get_authentication_xml_block(message_type)
         context = {
             'header': auth_header,
             'request_body': request_body,
         }
+        
         req_body = render_to_string('dynamics_crm/soap_request.xml', context)
         headers = self.get_headers(req_body)
         self._write_debug_file('soap_request', req_body)
@@ -279,13 +287,25 @@ class DynamicsCrmSettings(object):
         escaped_fetch = escape(fetch)
         request = render_to_string('dynamics_crm/retrieve_multiple.xml',
                                    {'escaped_fetch': escaped_fetch})
-        resp = self.make_soap_request(request)
+        resp = self.make_soap_request(request, 'RetrieveMultiple')
         if resp.status_code == 200:
             return self.extract_users(resp.content)
         else:
-            raise DynamicsCrmSettingsError(
-                'Dynamcs CRM Error ({}): {}'.format(
-                    resp.status_code, resp.content))
+            raise DynamicsCrmSettingsError('Dynamcs CRM Error ({}): {}'.format(resp.status_code, resp.content))
+
+    def get_whoami(self, resp_content):
+        fix_suds()
+        from suds.sax.parser import Parser
+        p = Parser()
+        doc = p.parse(string=resp_content)
+
+        id = ''
+        results = doc.childAtPath('Envelope/Body/ExecuteResponse/ExecuteResult/Results')
+        for result in results.children:
+            if result.childAtPath('key').text == 'UserId':
+                id = result.childAtPath('value').text
+
+        return id
 
     def extract_users(self, resp_content):
         fix_suds()

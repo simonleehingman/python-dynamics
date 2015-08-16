@@ -1,8 +1,1 @@
-<s:Body>
-    <RetrieveMultiple xmlns="http://schemas.microsoft.com/xrm/2011/Contracts/Services"
-                      xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
-        <query i:type="a:FetchExpression" xmlns:a="http://schemas.microsoft.com/xrm/2011/Contracts">
-            <a:Query>{{ escaped_fetch }}</a:Query>
-        </query>
-    </RetrieveMultiple>
-</s:Body>
+<s:Body><RetrieveMultiple xmlns="http://schemas.microsoft.com/xrm/2011/Contracts/Services" xmlns:i="http://www.w3.org/2001/XMLSchema-instance"><query i:type="a:FetchExpression" xmlns:a="http://schemas.microsoft.com/xrm/2011/Contracts"><a:Query>{{ escaped_fetch }}</a:Query></query></RetrieveMultiple></s:Body>
