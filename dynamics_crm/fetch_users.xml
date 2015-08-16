@@ -1,8 +1,1 @@
-<fetch version="1.0" output-format="xml-platform" mapping="logical" distinct="false">
-    <entity name="systemuser">
-        <attribute name="fullname"/>
-        <attribute name="internalemailaddress"/>
-        <attribute name="systemuserid"/>
-        <order attribute="fullname" descending="false"/>
-    </entity>
-</fetch>
+<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='false'><entity name='systemuser'><attribute name='fullname'/><attribute name='internalemailaddress'/><attribute name='systemuserid'/><order attribute='fullname' descending='false'/></entity></fetch>

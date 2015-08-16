@@ -1,5 +1,1 @@
-<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope"
-            xmlns:a="http://www.w3.org/2005/08/addressing">
-    {{ header }}
-    {{ request_body }}
-</s:Envelope>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:a="http://www.w3.org/2005/08/addressing">{{ header }}{{ request_body }}</s:Envelope>
