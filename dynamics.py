@@ -3,14 +3,16 @@ from datetime import datetime, timedelta
 import hashlib
 import hmac
 import os
-#from urlparse2 import urljoin
 from uuid import uuid4
 from cgi import escape
 import requests
 
 from jinja2 import Template, FileSystemLoader
 from jinja2.environment import Environment
-from urllib.parse import urljoin
+try:
+    from urllib.parse import urljoin
+except ImportError:
+    from urlparse import urljoin
 
 def render_to_string(template_name, context=None):
     if context is None:
