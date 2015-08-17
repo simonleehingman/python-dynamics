@@ -14,6 +14,7 @@ try:
 except ImportError:
     from urlparse import urljoin
 
+
 def render_to_string(template_name, context=None):
     if context is None:
         context = {}
