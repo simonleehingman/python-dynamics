@@ -6,6 +6,7 @@ import os
 from uuid import uuid4
 from cgi import escape
 import requests
+from pytz import timezone
 
 from jinja2 import Template, FileSystemLoader
 from jinja2.environment import Environment
@@ -55,8 +56,8 @@ class DynamicsCrmSettings(object):
         self.password = kwargs.get('password', '')
         self.url = kwargs.get('url', '')
         self.username = kwargs.get('username', '')
-
-        self.now = datetime.now()
+        self.timezone = timezone(kwargs.get('timezone', 'US/Eastern'))
+        self.now = datetime.now(self.timezone)
         self.log_tag = '%s.%d-%x' % (self.now.strftime('%y%m%d.%H%M%S'),
                                      os.getpid(), id(self))
 
@@ -100,8 +101,8 @@ class DynamicsCrmSettings(object):
         }
 
     def generate_auth_request_body_online(self):
-        now = datetime.now().isoformat()
-        expiration = (datetime.now() + timedelta(minutes=20)).isoformat()
+        now = datetime.now(self.timezone).isoformat()
+        expiration = (datetime.now(self.timezone) + timedelta(minutes=20)).isoformat()
         context = {
             'username': self.username,
             'password': self.password,
@@ -268,7 +269,7 @@ class DynamicsCrmSettings(object):
             'header': auth_header,
             'request_body': request_body,
         }
-        
+
         req_body = render_to_string('dynamics_crm/soap_request.xml', context)
         headers = self.get_headers(req_body)
         self._write_debug_file('soap_request', req_body)
