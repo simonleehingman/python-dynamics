@@ -285,13 +285,12 @@ class DynamicsCrmSettings(object):
 
 	def get_users(self):
 		fetch = render_to_string('dynamics_crm/fetch_users.xml')
-		escaped_fetch = escape(fetch)
-		request = render_to_string('dynamics_crm/retrieve_multiple.xml', {'escaped_fetch': escaped_fetch})
-		resp = self.make_soap_request(request, 'RetrieveMultiple')
-		if resp.status_code == 200:
-			return self.extract_users(resp.content)
-		else:
-			raise DynamicsCrmSettingsError('Dynamcs CRM Error ({}): {}'.format(resp.status_code, resp.content))
+		attributesSet = []
+		attributesSet.append(['systemuserid', 'ID', 'value'])
+		attributesSet.append(['internalemailaddress', 'InternalEMailAddress', 'value'])
+		attributesSet.append(['fullname', 'Name', 'value'])
+		
+		return self.get_entity(fetch, attributesSet)
 
 	def get_whoami(self, resp_content):
 		fix_suds()
@@ -306,29 +305,6 @@ class DynamicsCrmSettings(object):
 				id = result.childAtPath('value').text
 
 		return id
-
-	def extract_users(self, resp_content):
-		fix_suds()
-		from suds.sax.parser import Parser
-		p = Parser()
-		doc = p.parse(string=resp_content)
-
-		users = []
-		user_elements = doc.childAtPath('Envelope/Body/RetrieveMultipleResponse/RetrieveMultipleResult/Entities')
-		for user in user_elements.children:
-			user_info = {}
-			attributes = user.childrenAtPath('Attributes/KeyValuePairOfstringanyType')
-			for attr in attributes:
-				if attr.childAtPath('key').text == 'systemuserid':
-					user_info['id'] = attr.childAtPath('value').text
-				elif attr.childAtPath('key').text == 'internalemailaddress':
-					user_info['internalemailaddress'] = attr.childAtPath('value').text
-				elif attr.childAtPath('key').text == 'fullname':
-					fullname = attr.childAtPath('value').text
-					user_info['last_name'] = ' '.join(fullname.split()[-1:])
-					user_info['first_name'] = ' '.join(fullname.split()[:-1])
-			users.append(user_info)
-		return users
 
 	def get_entity(self, fetch, attributesSet):
 		escaped_fetch = escape(fetch)
