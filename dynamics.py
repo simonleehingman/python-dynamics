@@ -284,13 +284,13 @@ class DynamicsCrmSettings(object):
 		return name
 
 	def get_users(self):
-		fetch = render_to_string('dynamics_crm/fetch_users.xml')
+		fetch_path = 'dynamics_crm/fetch_users.xml'
 		attributesSet = []
 		attributesSet.append(['systemuserid', 'ID', 'value'])
 		attributesSet.append(['internalemailaddress', 'InternalEMailAddress', 'value'])
 		attributesSet.append(['fullname', 'Name', 'value'])
 		
-		return self.get_entity(fetch, attributesSet)
+		return self.get_entity(fetch_path, attributesSet)
 
 	def get_whoami(self, resp_content):
 		fix_suds()
@@ -306,7 +306,8 @@ class DynamicsCrmSettings(object):
 
 		return id
 
-	def get_entity(self, fetch, attributesSet):
+	def get_entity(self, fetch_path, attributesSet, filters=None):
+		fetch = render_to_string(fetch_path, {'filters': filters})
 		escaped_fetch = escape(fetch)
 		request = render_to_string('dynamics_crm/retrieve_multiple.xml', {'escaped_fetch': escaped_fetch})
 		resp = self.make_soap_request(request, 'RetrieveMultiple')
