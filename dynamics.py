@@ -329,3 +329,31 @@ class DynamicsCrmSettings(object):
 					user_info['first_name'] = ' '.join(fullname.split()[:-1])
 			users.append(user_info)
 		return users
+
+	def get_entity(self, fetch, attributesSet):
+		escaped_fetch = escape(fetch)
+		request = render_to_string('dynamics_crm/retrieve_multiple.xml', {'escaped_fetch': escaped_fetch})
+		resp = self.make_soap_request(request, 'RetrieveMultiple')
+		if resp.status_code == 200:
+			return self.extract_entity(resp.content, attributesSet)
+		else:
+			raise DynamicsCrmSettingsError('Dynamcs CRM Error ({}): {}'.format(resp.status_code, resp.content))
+
+	def extract_entity(self, resp_content, attributesSet):
+		fix_suds()
+		from suds.sax.parser import Parser
+		p = Parser()
+		doc = p.parse(string=resp_content)
+
+		entities = []
+		entity_elements = doc.childAtPath('Envelope/Body/RetrieveMultipleResponse/RetrieveMultipleResult/Entities')
+		for entity in entity_elements.children:
+			entity_info = {}
+			attributes = entity.childrenAtPath('Attributes/KeyValuePairOfstringanyType')
+			for attr in attributes:
+				for attrSet in attributesSet:
+					if attr.childAtPath('key').text == attrSet[0]:
+						entity_info[attrSet[1]] = attr.childAtPath(attrSet[2]).text
+						break
+			entities.append(entity_info)
+		return entities
