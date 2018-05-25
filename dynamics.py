@@ -58,8 +58,7 @@ class DynamicsCrmSettings(object):
         self.username = kwargs.get('username', '')
         self.timezone = timezone(kwargs.get('timezone', 'US/Eastern'))
         self.now = datetime.now(self.timezone)
-        self.log_tag = '%s.%d-%x' % (self.now.strftime('%y%m%d.%H%M%S'),
-                                     os.getpid(), id(self))
+        self.log_tag = '%s.%d-%x' % (self.now.strftime('%y%m%d.%H%M%S'), os.getpid(), id(self))
 
     @property
     def login_url(self):
@@ -223,9 +222,7 @@ class DynamicsCrmSettings(object):
 
     def generate_hmac_signature(self, binary_secret, created, expires):
 
-        timestamp = render_to_string('dynamics_crm/timestamp.xml',
-                                     {'created': created, 'expires': expires})
-
+        timestamp = render_to_string('dynamics_crm/timestamp.xml', {'created': created, 'expires': expires})
         timestamp_hasher = hashlib.sha1()
         timestamp_hasher.update(timestamp.encode('utf8'))
         timestamp_digest = base64.b64encode(timestamp_hasher.digest()).decode('ascii')
@@ -289,8 +286,7 @@ class DynamicsCrmSettings(object):
     def get_users(self):
         fetch = render_to_string('dynamics_crm/fetch_users.xml')
         escaped_fetch = escape(fetch)
-        request = render_to_string('dynamics_crm/retrieve_multiple.xml',
-                                   {'escaped_fetch': escaped_fetch})
+        request = render_to_string('dynamics_crm/retrieve_multiple.xml', {'escaped_fetch': escaped_fetch})
         resp = self.make_soap_request(request, 'RetrieveMultiple')
         if resp.status_code == 200:
             return self.extract_users(resp.content)
