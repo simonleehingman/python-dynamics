@@ -97,7 +97,7 @@ class DynamicsCrmSettings(object):
     def get_headers(self, content):
         return {
             'Content-Type': 'application/soap+xml; charset=UTF-8',
-            'Content-Length': len(content),
+            'Content-Length': str(len(content)),
         }
 
     def generate_auth_request_body_online(self):

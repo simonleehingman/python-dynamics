@@ -14,4 +14,4 @@ dyn = DynamicsCrmSettings(
 )
 
 users = dyn.get_users()
-print len(users)
+print(len(users))

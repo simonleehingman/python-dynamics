@@ -13,4 +13,4 @@ dyn = DynamicsCrmSettings(
     is_crm_online=False,
 )
 
-print dyn.make_whoami_request()
+print(dyn.make_whoami_request())
